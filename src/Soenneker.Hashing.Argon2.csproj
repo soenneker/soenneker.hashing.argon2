@@ -44,7 +44,8 @@
     <ItemGroup>
         <PackageReference Include="Konscious.Security.Cryptography.Argon2" Version="1.3.1" />
         <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="9.0.0" />
-        <PackageReference Include="Soenneker.Extensions.String" Version="3.0.359" />
+        <PackageReference Include="Soenneker.Extensions.String" Version="3.0.360" />
+        <PackageReference Include="Soenneker.Extensions.Task" Version="3.0.85" />
         <PackageReference Include="Soenneker.Utils.Random.Security" Version="3.0.84" />
     </ItemGroup>
 </Project>
