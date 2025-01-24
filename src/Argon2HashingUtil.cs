@@ -6,6 +6,7 @@ using Soenneker.Extensions.String;
 using System.Threading.Tasks;
 using Soenneker.Extensions.Task;
 using System.Diagnostics.Contracts;
+using Soenneker.Extensions.Arrays.Bytes;
 
 namespace Soenneker.Hashing.Argon2;
 
@@ -39,7 +40,7 @@ public static class Argon2HashingUtil
         int memorySize = _defaultMemorySize,
         int parallelism = _defaultParallelism)
     {
-        password.ThrowIfNullOrWhitespace();
+        password.ThrowIfNullOrWhiteSpace();
 
         // Generate a random salt
         byte[] salt = RandomSecurityUtil.GetByteArray(saltSize);
@@ -62,7 +63,7 @@ public static class Argon2HashingUtil
         hash.CopyTo(combined, saltSize);
 
         // Return base64 encoded result
-        return Convert.ToBase64String(combined);
+        return combined.ToBase64String();
     }
 
     /// <summary>
@@ -86,8 +87,8 @@ public static class Argon2HashingUtil
         int memorySize = _defaultMemorySize,
         int parallelism = _defaultParallelism)
     {
-        password.ThrowIfNullOrWhitespace();
-        hash.ThrowIfNullOrWhitespace();
+        password.ThrowIfNullOrWhiteSpace();
+        hash.ThrowIfNullOrWhiteSpace();
 
         // Decode the hash
         byte[] hashBytes = hash.ToBytesFromBase64();
