@@ -1,4 +1,4 @@
-# Contributing to Soenneker.Hashing.Argon2
+﻿# Contributing to Soenneker.Hashing.Argon2
 
 We're excited that you're interested in contributing!
 
