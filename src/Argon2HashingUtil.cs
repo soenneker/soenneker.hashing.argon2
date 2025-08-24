@@ -1,118 +1,141 @@
 using Konscious.Security.Cryptography;
-using System.Security.Cryptography;
 using System;
-using Soenneker.Utils.Random.Security;
-using Soenneker.Extensions.String;
+using System.Security.Cryptography;
 using System.Threading.Tasks;
-using Soenneker.Extensions.Task;
-using System.Diagnostics.Contracts;
 using Soenneker.Extensions.Arrays.Bytes;
+using Soenneker.Extensions.String;
+using Soenneker.Extensions.Task;
+using Soenneker.Utils.Random.Security;
 
 namespace Soenneker.Hashing.Argon2;
 
 /// <summary>
-/// A utility library for Argon2 hashing and verification
+/// Argon2id hashing + verification (PHC format).
 /// </summary>
 public static class Argon2HashingUtil
 {
-    private const int _defaultSaltSize = 16;
-    private const int _defaultHashSize = 32;
-    private const int _defaultIterations = 4;
-    private const int _defaultMemorySize = 65536;
+    private const int _defaultSaltBytes = 16;
+    private const int _defaultHashBytes = 32;
+    private const int _defaultTime = 3; // iterations
+    private const int _defaultMemoryKiB = 131_072; // 128 MiB (in KiB, per Konscious)
     private const int _defaultParallelism = 2;
 
     /// <summary>
-    /// Generates a secure Argon2id hash for a given plaintext password.
+    /// Creates a PHC-formatted Argon2id record:
+    /// <c>$argon2id$v=19$m=&lt;KiB&gt;,t=&lt;iter&gt;,p=&lt;par&gt;$&lt;saltB64&gt;$&lt;hashB64&gt;</c>
     /// </summary>
-    /// <param name="password">The plaintext password to hash. Cannot be null or whitespace.</param>
-    /// <param name="saltSize">The size of the salt in bytes. Default is 16 bytes.</param>
-    /// <param name="hashSize">The size of the hash in bytes. Default is 32 bytes.</param>
-    /// <param name="iterations">The number of iterations for the Argon2id algorithm. Default is 4.</param>
-    /// <param name="memorySize">The memory size in KB for the Argon2id algorithm. Default is 65536 KB.</param>
-    /// <param name="parallelism">The number of threads to use for the Argon2id algorithm. Default is 2.</param>
-    /// <returns>A Base64-encoded string containing the salt and hash.</returns>
-    [Pure]
-    public static async ValueTask<string> Hash(
-        string password,
-        int saltSize = _defaultSaltSize,
-        int hashSize = _defaultHashSize,
-        int iterations = _defaultIterations,
-        int memorySize = _defaultMemorySize,
-        int parallelism = _defaultParallelism)
+    public static async ValueTask<string> HashToPhc(string password, int saltBytes = _defaultSaltBytes, int hashBytes = _defaultHashBytes, int time = _defaultTime,
+        int memoryKiB = _defaultMemoryKiB, int parallelism = _defaultParallelism)
     {
         password.ThrowIfNullOrWhiteSpace();
 
-        // Generate a random salt
-        byte[] salt = RandomSecurityUtil.GetByteArray(saltSize);
+        byte[] salt = RandomSecurityUtil.GetByteArray(saltBytes);
+        byte[] pwd = password.ToBytes(); // from Soenneker.Extensions.String
+        byte[] hash = [];
 
-        // Configure Argon2id
-        using var argon2 = new Argon2id(password.ToBytes())
+        try
         {
-            Salt = salt,
-            DegreeOfParallelism = parallelism,
-            MemorySize = memorySize,
-            Iterations = iterations
-        };
+            using var a2 = new Argon2id(pwd)
+            {
+                Salt = salt,
+                Iterations = time,
+                MemorySize = memoryKiB, // KiB
+                DegreeOfParallelism = parallelism
+            };
 
-        // Generate the hash
-        byte[] hash = await argon2.GetBytesAsync(hashSize).NoSync();
+            hash = await a2.GetBytesAsync(hashBytes).NoSync();
 
-        // Combine salt and hash into a single span
-        var combined = new byte[saltSize + hashSize];
-        salt.CopyTo(combined, 0);
-        hash.CopyTo(combined, saltSize);
+            string saltB64 = salt.ToBase64String();
+            string hashB64 = hash.ToBase64String();
 
-        // Return base64 encoded result
-        return combined.ToBase64String();
+            return $"$argon2id$v=19$m={memoryKiB},t={time},p={parallelism}${saltB64}${hashB64}";
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(pwd);
+            if (hash.Length > 0) 
+                CryptographicOperations.ZeroMemory(hash);
+
+            CryptographicOperations.ZeroMemory(salt);
+        }
     }
 
     /// <summary>
-    /// Verifies whether a given plaintext password matches a Base64-encoded Argon2id hash.
+    /// Verifies a PHC-formatted Argon2id record.
+    /// Accepts: <c>$argon2id$v=19$m=...,t=...,p=...$&lt;saltB64&gt;$&lt;hashB64&gt;</c>
     /// </summary>
-    /// <param name="password">The plaintext password to verify. Cannot be null or whitespace.</param>
-    /// <param name="hash">The Base64-encoded hash to verify against. Cannot be null or whitespace.</param>
-    /// <param name="saltSize">The size of the salt in bytes. Default is 16 bytes.</param>
-    /// <param name="hashSize">The size of the hash in bytes. Default is 32 bytes.</param>
-    /// <param name="iterations">The number of iterations for the Argon2id algorithm. Default is 4.</param>
-    /// <param name="memorySize">The memory size in KB for the Argon2id algorithm. Default is 65536 KB.</param>
-    /// <param name="parallelism">The number of threads to use for the Argon2id algorithm. Default is 2.</param>
-    /// <returns>True if the password matches the hash; otherwise, false.</returns>
-    [Pure]
-    public static async ValueTask<bool> Verify(
-        string password,
-        string hash,
-        int saltSize = _defaultSaltSize,
-        int hashSize = _defaultHashSize,
-        int iterations = _defaultIterations,
-        int memorySize = _defaultMemorySize,
-        int parallelism = _defaultParallelism)
+    public static async ValueTask<bool> VerifyPhc(string password, string phc)
     {
-        password.ThrowIfNullOrWhiteSpace();
-        hash.ThrowIfNullOrWhiteSpace();
+        if (password.IsNullOrWhiteSpace() || phc.IsNullOrWhiteSpace())
+            return false;
 
-        // Decode the hash
-        byte[] hashBytes = hash.ToBytesFromBase64();
+        // parts: 0:"argon2id", 1:"v=19", 2:"m=..,t=..,p=..", 3:"saltB64", 4:"hashB64"
+        string[] parts = phc.Split('$', StringSplitOptions.RemoveEmptyEntries);
 
-        if (hashBytes.Length < _defaultSaltSize + hashSize)
-            return false; // Invalid hash length
+        if (parts.Length != 5 || !parts[0].Equals("argon2id", StringComparison.Ordinal))
+            return false;
 
-        // Extract salt and original hash
-        byte[] salt = hashBytes.AsSpan(0, saltSize).ToArray();
-        byte[] originalHash = hashBytes.AsSpan(saltSize, hashSize).ToArray();
+        if (!parts[1].StartsWith("v=19", StringComparison.Ordinal))
+            return false;
 
-        // Configure Argon2id
-        using var argon2 = new Argon2id(password.ToBytes())
+        int memoryKiB = 0, time = 0, parallelism = 0;
+        string[] kvs = parts[2].Split(',', StringSplitOptions.RemoveEmptyEntries);
+
+        for (int i = 0; i < kvs.Length; i++)
         {
-            Salt = salt,
-            DegreeOfParallelism = parallelism,
-            MemorySize = memorySize,
-            Iterations = iterations
-        };
+            string kv = kvs[i];
+            if (kv.StartsWith("m=", StringComparison.Ordinal))
+                memoryKiB = int.Parse(kv.AsSpan(2));
+            else if (kv.StartsWith("t=", StringComparison.Ordinal))
+                time = int.Parse(kv.AsSpan(2));
+            else if (kv.StartsWith("p=", StringComparison.Ordinal))
+                parallelism = int.Parse(kv.AsSpan(2));
+        }
 
-        // Generate new hash
-        byte[] newHash = await argon2.GetBytesAsync(hashSize).NoSync();
+        if (memoryKiB <= 0 || time <= 0 || parallelism <= 0)
+            return false;
 
-        // Compare the original hash with the new hash
-        return CryptographicOperations.FixedTimeEquals(originalHash, newHash);
+        byte[] salt, expected;
+
+        try
+        {
+            salt = Convert.FromBase64String(parts[3]);
+            expected = Convert.FromBase64String(parts[4]);
+        }
+        catch
+        {
+            return false;
+        }
+
+        byte[] pwd = password.ToBytes();
+        byte[] hash = [];
+
+        try
+        {
+            using var a2 = new Argon2id(pwd)
+            {
+                Salt = salt,
+                Iterations = time,
+                MemorySize = memoryKiB,
+                DegreeOfParallelism = parallelism
+            };
+
+            hash = await a2.GetBytesAsync(expected.Length).NoSync();
+            return CryptographicOperations.FixedTimeEquals(hash, expected);
+        }
+        catch
+        {
+            return false;
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(pwd);
+
+            if (hash.Length > 0)
+                CryptographicOperations.ZeroMemory(hash);
+
+            CryptographicOperations.ZeroMemory(salt);
+            CryptographicOperations.ZeroMemory(expected);
+        }
     }
 }
