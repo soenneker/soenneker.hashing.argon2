@@ -24,7 +24,7 @@ public static class Argon2HashingUtil
     /// Creates a PHC-formatted Argon2id record:
     /// <c>$argon2id$v=19$m=&lt;KiB&gt;,t=&lt;iter&gt;,p=&lt;par&gt;$&lt;saltB64&gt;$&lt;hashB64&gt;</c>
     /// </summary>
-    public static async ValueTask<string> HashToPhc(string password, int saltBytes = _defaultSaltBytes, int hashBytes = _defaultHashBytes, int time = _defaultTime,
+    public static async ValueTask<string> Hash(string password, int saltBytes = _defaultSaltBytes, int hashBytes = _defaultHashBytes, int time = _defaultTime,
         int memoryKiB = _defaultMemoryKiB, int parallelism = _defaultParallelism)
     {
         password.ThrowIfNullOrWhiteSpace();
@@ -64,7 +64,7 @@ public static class Argon2HashingUtil
     /// Verifies a PHC-formatted Argon2id record.
     /// Accepts: <c>$argon2id$v=19$m=...,t=...,p=...$&lt;saltB64&gt;$&lt;hashB64&gt;</c>
     /// </summary>
-    public static async ValueTask<bool> VerifyPhc(string password, string phc)
+    public static async ValueTask<bool> Verify(string password, string phc)
     {
         if (password.IsNullOrWhiteSpace() || phc.IsNullOrWhiteSpace())
             return false;

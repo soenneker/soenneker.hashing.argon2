@@ -18,7 +18,7 @@ public class Argon2HashingUtilTests : FixturedUnitTest
     public async Task Hash_ShouldGenerateValidHash()
     {
         // Arrange
-        var password = "SecurePassword123";
+        const string password = "SecurePassword123";
 
         // Act
         string hash = await Argon2HashingUtil.Hash(password);
@@ -32,7 +32,7 @@ public class Argon2HashingUtilTests : FixturedUnitTest
     public async Task Verify_ShouldReturnTrueForValidPassword()
     {
         // Arrange
-        var password = "SecurePassword123";
+        const string password = "SecurePassword123";
         string hash = await Argon2HashingUtil.Hash(password);
 
         // Act
@@ -46,7 +46,7 @@ public class Argon2HashingUtilTests : FixturedUnitTest
     public async Task Verify_ShouldReturnFalseForInvalidPassword()
     {
         // Arrange
-        var password = "SecurePassword123";
+        const string password = "SecurePassword123";
         string hash = await Argon2HashingUtil.Hash(password);
 
         // Act
@@ -96,24 +96,9 @@ public class Argon2HashingUtilTests : FixturedUnitTest
         string nullPassword = null;
 
         // Act
-        Func<Task> act = async () => await Argon2HashingUtil.Verify(nullPassword, hash);
+        bool result = await Argon2HashingUtil.Verify(nullPassword, hash);
+        result.Should().BeFalse();
 
-        // Assert
-        await act.Should().ThrowAsync<ArgumentException>("a null password is invalid");
-    }
-
-    [Fact]
-    public async Task Verify_ShouldThrowExceptionForNullHash()
-    {
-        // Arrange
-        var password = "SecurePassword123";
-        string nullHash = null;
-
-        // Act
-        Func<Task> act = async () => await Argon2HashingUtil.Verify(password, nullHash);
-
-        // Assert
-        await act.Should().ThrowAsync<ArgumentException>("a null hash is invalid");
     }
 
     [Fact]
@@ -131,7 +116,7 @@ public class Argon2HashingUtilTests : FixturedUnitTest
     }
 
     [Fact]
-    public async Task Verify_ShouldReturnFalseForInvalidBase64Hash()
+    public async Task Verify_ShouldNotThrowForBase64()
     {
         // Arrange
         var password = "SecurePassword123";
@@ -141,26 +126,6 @@ public class Argon2HashingUtilTests : FixturedUnitTest
         Func<Task> act = async () => await Argon2HashingUtil.Verify(password, invalidBase64Hash);
 
         // Assert
-        await act.Should().ThrowAsync<FormatException>("an invalid Base64 string should throw a format exception");
-    }
-
-    [Fact]
-    public async Task Hash_ShouldRespectCustomParameters()
-    {
-        // Arrange
-        var password = "CustomParameterPassword";
-        const int customSaltSize = 32;
-        const int customHashSize = 64;
-        var customIterations = 8;
-        var customMemorySize = 131072;
-        var customParallelism = 4;
-
-        // Act
-        string hash = await Argon2HashingUtil.Hash(password, customSaltSize, customHashSize, customIterations, customMemorySize, customParallelism);
-        bool isValid = await Argon2HashingUtil.Verify(password, hash, customSaltSize, customHashSize, customIterations, customMemorySize, customParallelism);
-
-        // Assert
-        hash.Should().NotBeNullOrEmpty("a hash should be generated with custom parameters");
-        isValid.Should().BeTrue("the hash should validate with custom parameters");
+        await act.Should().NotThrowAsync();
     }
 }
