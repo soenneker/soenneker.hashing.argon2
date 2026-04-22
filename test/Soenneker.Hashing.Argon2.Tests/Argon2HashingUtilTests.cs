@@ -1,20 +1,18 @@
 using AwesomeAssertions;
-using Soenneker.Tests.FixturedUnit;
+using Soenneker.Tests.HostedUnit;
 using System.Threading.Tasks;
 using System;
-using Xunit;
-
 
 namespace Soenneker.Hashing.Argon2.Tests;
 
-[Collection("Collection")]
-public class Argon2HashingUtilTests : FixturedUnitTest
+[ClassDataSource<Host>(Shared = SharedType.PerTestSession)]
+public class Argon2HashingUtilTests : HostedUnitTest
 {
-    public Argon2HashingUtilTests(Fixture fixture, ITestOutputHelper output) : base(fixture, output)
+    public Argon2HashingUtilTests(Host host) : base(host)
     {
     }
 
-    [Fact]
+    [Test]
     public async Task Hash_ShouldGenerateValidHash()
     {
         // Arrange
@@ -28,7 +26,7 @@ public class Argon2HashingUtilTests : FixturedUnitTest
         hash.Should().NotBe(password, "the hash should not match the plain text password");
     }
 
-    [Fact]
+    [Test]
     public async Task Verify_ShouldReturnTrueForValidPassword()
     {
         // Arrange
@@ -42,7 +40,7 @@ public class Argon2HashingUtilTests : FixturedUnitTest
         isValid.Should().BeTrue("the password matches the hash");
     }
 
-    [Fact]
+    [Test]
     public async Task Verify_ShouldReturnFalseForInvalidPassword()
     {
         // Arrange
@@ -56,7 +54,7 @@ public class Argon2HashingUtilTests : FixturedUnitTest
         isValid.Should().BeFalse("the password does not match the hash");
     }
 
-    [Fact]
+    [Test]
     public async Task Verify_ShouldReturnFalseForTamperedHash()
     {
         // Arrange
@@ -75,7 +73,7 @@ public class Argon2HashingUtilTests : FixturedUnitTest
         isValid.Should().BeFalse("a tampered hash should not validate");
     }
 
-    [Fact]
+    [Test]
     public async Task Hash_ShouldThrowExceptionForNullPassword()
     {
         // Arrange
@@ -88,7 +86,7 @@ public class Argon2HashingUtilTests : FixturedUnitTest
         await act.Should().ThrowAsync<ArgumentException>("a null password is invalid");
     }
 
-    [Fact]
+    [Test]
     public async Task Verify_ShouldThrowExceptionForNullPassword()
     {
         // Arrange
@@ -101,7 +99,7 @@ public class Argon2HashingUtilTests : FixturedUnitTest
 
     }
 
-    [Fact]
+    [Test]
     public async Task Verify_ShouldReturnFalseForShortValidBase64Hash()
     {
         // Arrange
@@ -115,7 +113,7 @@ public class Argon2HashingUtilTests : FixturedUnitTest
         isValid.Should().BeFalse("a Base64 string shorter than expected should not validate as a hash");
     }
 
-    [Fact]
+    [Test]
     public async Task Verify_ShouldNotThrowForBase64()
     {
         // Arrange
