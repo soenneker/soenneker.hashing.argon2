@@ -24,6 +24,13 @@ public static class Argon2HashingUtil
     /// Creates a PHC-formatted Argon2id record:
     /// <c>$argon2id$v=19$m=&lt;KiB&gt;,t=&lt;iter&gt;,p=&lt;par&gt;$&lt;saltB64&gt;$&lt;hashB64&gt;</c>
     /// </summary>
+    /// <param name="password">Receives the decoded password when parsing succeeds.</param>
+    /// <param name="saltBytes">Salt bytes used by the password hash.</param>
+    /// <param name="hashBytes">Hash bytes to encode or verify.</param>
+    /// <param name="time">Time for the hash operation.</param>
+    /// <param name="memoryKiB">Memory Ki B for the hash operation.</param>
+    /// <param name="parallelism">Parallelism for the hash operation.</param>
+    /// <returns>A task whose result is the text returned by hash.</returns>
     public static async ValueTask<string> Hash(string password, int saltBytes = _defaultSaltBytes, int hashBytes = _defaultHashBytes, int time = _defaultTime,
         int memoryKiB = _defaultMemoryKiB, int parallelism = _defaultParallelism)
     {
@@ -64,6 +71,9 @@ public static class Argon2HashingUtil
     /// Verifies a PHC-formatted Argon2id record.
     /// Accepts: <c>$argon2id$v=19$m=...,t=...,p=...$&lt;saltB64&gt;$&lt;hashB64&gt;</c>
     /// </summary>
+    /// <param name="password">Receives the decoded password when parsing succeeds.</param>
+    /// <param name="phc">PBKDF2 hash encoded in PHC string format.</param>
+    /// <returns>true if verifies a PHC-formatted Argon2id record. Accepts: $argon2id$v=19$m=...,t=...,p=...$&lt;saltB64&gt;$&lt;hashB64&gt;; otherwise, false.</returns>
     public static async ValueTask<bool> Verify(string password, string phc)
     {
         if (password.IsNullOrWhiteSpace() || phc.IsNullOrWhiteSpace())
