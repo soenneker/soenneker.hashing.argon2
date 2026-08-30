@@ -126,4 +126,24 @@ public class Argon2HashingUtilTests : HostedUnitTest
         // Assert
         await act.Should().NotThrowAsync();
     }
+
+    [Test]
+    public async Task Verify_ShouldRejectMalformedWorkFactor()
+    {
+        const string phc = "$argon2id$v=19$m=not-a-number,t=3,p=2$c2FsdHNhbHRzYWx0c2FsdA==$aGFzaGhhc2hoYXNoaGFzaGhhc2g=";
+
+        bool result = await Argon2HashingUtil.Verify("password", phc);
+
+        result.Should().BeFalse();
+    }
+
+    [Test]
+    public async Task Verify_ShouldRejectExcessiveMemoryBeforeHashing()
+    {
+        const string phc = "$argon2id$v=19$m=2147483647,t=3,p=2$c2FsdHNhbHRzYWx0c2FsdA==$aGFzaGhhc2hoYXNoaGFzaGhhc2g=";
+
+        bool result = await Argon2HashingUtil.Verify("password", phc);
+
+        result.Should().BeFalse();
+    }
 }

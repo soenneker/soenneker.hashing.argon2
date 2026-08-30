@@ -19,22 +19,30 @@ public static class Argon2HashingUtil
     private const int _defaultTime = 3; // iterations
     private const int _defaultMemoryKiB = 131_072; // 128 MiB (in KiB, per Konscious)
     private const int _defaultParallelism = 2;
+    private const int _maxSaltBytes = 64;
+    private const int _maxHashBytes = 128;
+    private const int _maxTime = 10;
+    private const int _maxMemoryKiB = 262_144;
+    private const int _maxParallelism = 16;
 
     /// <summary>
     /// Creates a PHC-formatted Argon2id record:
     /// <c>$argon2id$v=19$m=&lt;KiB&gt;,t=&lt;iter&gt;,p=&lt;par&gt;$&lt;saltB64&gt;$&lt;hashB64&gt;</c>
     /// </summary>
-    /// <param name="password">Receives the decoded password when parsing succeeds.</param>
+    /// <param name="password">The plaintext password to hash.</param>
     /// <param name="saltBytes">Salt bytes used by the password hash.</param>
     /// <param name="hashBytes">Hash bytes to encode or verify.</param>
-    /// <param name="time">Time for the hash operation.</param>
-    /// <param name="memoryKiB">Memory Ki B for the hash operation.</param>
-    /// <param name="parallelism">Parallelism for the hash operation.</param>
-    /// <returns>A task whose result is the text returned by hash.</returns>
+    /// <param name="time">The iteration count.</param>
+    /// <param name="memoryKiB">The memory cost in KiB.</param>
+    /// <param name="parallelism">The degree of parallelism.</param>
+    /// <returns>The encoded Argon2id record.</returns>
     public static async ValueTask<string> Hash(string password, int saltBytes = _defaultSaltBytes, int hashBytes = _defaultHashBytes, int time = _defaultTime,
         int memoryKiB = _defaultMemoryKiB, int parallelism = _defaultParallelism)
     {
         password.ThrowIfNullOrWhiteSpace();
+
+        if (!ParametersAreSafe(saltBytes, hashBytes, time, memoryKiB, parallelism))
+            throw new InvalidOperationException("Argon2 parameters exceed the supported safety limits.");
 
         byte[] salt = RandomSecurityUtil.GetByteArray(saltBytes);
         byte[] pwd = password.ToBytes(); // from Soenneker.Extensions.String
@@ -71,12 +79,12 @@ public static class Argon2HashingUtil
     /// Verifies a PHC-formatted Argon2id record.
     /// Accepts: <c>$argon2id$v=19$m=...,t=...,p=...$&lt;saltB64&gt;$&lt;hashB64&gt;</c>
     /// </summary>
-    /// <param name="password">Receives the decoded password when parsing succeeds.</param>
-    /// <param name="phc">PBKDF2 hash encoded in PHC string format.</param>
-    /// <returns>true if verifies a PHC-formatted Argon2id record. Accepts: $argon2id$v=19$m=...,t=...,p=...$&lt;saltB64&gt;$&lt;hashB64&gt;; otherwise, false.</returns>
+    /// <param name="password">The candidate plaintext password.</param>
+    /// <param name="phc">The encoded Argon2id record returned by <see cref="Hash"/>.</param>
+    /// <returns><see langword="true"/> when the password matches; otherwise, <see langword="false"/>.</returns>
     public static async ValueTask<bool> Verify(string password, string phc)
     {
-        if (password.IsNullOrWhiteSpace() || phc.IsNullOrWhiteSpace())
+        if (password.IsNullOrWhiteSpace() || phc.IsNullOrWhiteSpace() || phc.Length > 1024)
             return false;
 
         // parts: 0:"argon2id", 1:"v=19", 2:"m=..,t=..,p=..", 3:"saltB64", 4:"hashB64"
@@ -85,7 +93,7 @@ public static class Argon2HashingUtil
         if (parts.Length != 5 || !parts[0].Equals("argon2id", StringComparison.Ordinal))
             return false;
 
-        if (!parts[1].StartsWith("v=19", StringComparison.Ordinal))
+        if (!parts[1].Equals("v=19", StringComparison.Ordinal))
             return false;
 
         int memoryKiB = 0, time = 0, parallelism = 0;
@@ -94,15 +102,18 @@ public static class Argon2HashingUtil
         for (int i = 0; i < kvs.Length; i++)
         {
             string kv = kvs[i];
-            if (kv.StartsWith("m=", StringComparison.Ordinal))
-                memoryKiB = int.Parse(kv.AsSpan(2));
-            else if (kv.StartsWith("t=", StringComparison.Ordinal))
-                time = int.Parse(kv.AsSpan(2));
-            else if (kv.StartsWith("p=", StringComparison.Ordinal))
-                parallelism = int.Parse(kv.AsSpan(2));
+            if (kv.StartsWith("m=", StringComparison.Ordinal) && !int.TryParse(kv.AsSpan(2), out memoryKiB))
+                return false;
+            if (kv.StartsWith("t=", StringComparison.Ordinal) && !int.TryParse(kv.AsSpan(2), out time))
+                return false;
+            if (kv.StartsWith("p=", StringComparison.Ordinal) && !int.TryParse(kv.AsSpan(2), out parallelism))
+                return false;
         }
 
-        if (memoryKiB <= 0 || time <= 0 || parallelism <= 0)
+        if (memoryKiB <= 0 || time <= 0 || parallelism <= 0 || memoryKiB > _maxMemoryKiB || time > _maxTime || parallelism > _maxParallelism)
+            return false;
+
+        if (parts[3].Length > 128 || parts[4].Length > 256)
             return false;
 
         byte[] salt, expected;
@@ -114,6 +125,13 @@ public static class Argon2HashingUtil
         }
         catch
         {
+            return false;
+        }
+
+        if (!ParametersAreSafe(salt.Length, expected.Length, time, memoryKiB, parallelism))
+        {
+            CryptographicOperations.ZeroMemory(salt);
+            CryptographicOperations.ZeroMemory(expected);
             return false;
         }
 
@@ -148,4 +166,8 @@ public static class Argon2HashingUtil
             CryptographicOperations.ZeroMemory(expected);
         }
     }
+
+    private static bool ParametersAreSafe(int saltBytes, int hashBytes, int time, int memoryKiB, int parallelism) =>
+        saltBytes is >= 8 and <= _maxSaltBytes && hashBytes is >= 16 and <= _maxHashBytes && time is >= 1 and <= _maxTime &&
+        memoryKiB is >= 8 and <= _maxMemoryKiB && parallelism is >= 1 and <= _maxParallelism;
 }
