@@ -48,6 +48,6 @@
         <PackageReference Include="Soenneker.Extensions.Arrays.Bytes" Version="4.0.66" />
         <PackageReference Include="Soenneker.Extensions.String" Version="4.0.734" />
         <PackageReference Include="Soenneker.Extensions.Task" Version="4.0.128" />
-        <PackageReference Include="Soenneker.Utils.Random.Security" Version="4.0.306" />
+        <PackageReference Include="Soenneker.Utils.Random.Security" Version="4.0.307" />
     </ItemGroup>
 </Project>
