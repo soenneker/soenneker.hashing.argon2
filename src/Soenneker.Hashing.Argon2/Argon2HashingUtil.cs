@@ -1,10 +1,11 @@
 using Konscious.Security.Cryptography;
 using System;
+using System.Globalization;
 using System.Security.Cryptography;
 using System.Threading.Tasks;
-using Soenneker.Extensions.Arrays.Bytes;
 using Soenneker.Extensions.String;
 using Soenneker.Extensions.Task;
+using Soenneker.Hashing.Phc;
 using Soenneker.Utils.Random.Security;
 
 namespace Soenneker.Hashing.Argon2;
@@ -24,6 +25,8 @@ public static class Argon2HashingUtil
     private const int _maxTime = 10;
     private const int _maxMemoryKiB = 262_144;
     private const int _maxParallelism = 16;
+    private const string _identifier = "argon2id";
+    private const int _version = 19;
 
     /// <summary>
     /// Creates a PHC-formatted Argon2id record:
@@ -60,10 +63,12 @@ public static class Argon2HashingUtil
 
             hash = await a2.GetBytesAsync(hashBytes).NoSync();
 
-            string saltB64 = salt.ToBase64String();
-            string hashB64 = hash.ToBase64String();
+            var record = new PhcString(_identifier, _version,
+                [new PhcParameter("m", memoryKiB.ToString(CultureInfo.InvariantCulture)), new PhcParameter("t", time.ToString(CultureInfo.InvariantCulture)),
+                    new PhcParameter("p", parallelism.ToString(CultureInfo.InvariantCulture))],
+                Convert.ToBase64String(salt).TrimEnd('='), Convert.ToBase64String(hash).TrimEnd('='));
 
-            return $"$argon2id$v=19$m={memoryKiB},t={time},p={parallelism}${saltB64}${hashB64}";
+            return PhcFormatter.Format(record);
         }
         finally
         {
@@ -87,41 +92,32 @@ public static class Argon2HashingUtil
         if (password.IsNullOrWhiteSpace() || phc.IsNullOrWhiteSpace() || phc.Length > 1024)
             return false;
 
-        // parts: 0:"argon2id", 1:"v=19", 2:"m=..,t=..,p=..", 3:"saltB64", 4:"hashB64"
-        string[] parts = phc.Split('$', StringSplitOptions.RemoveEmptyEntries);
-
-        if (parts.Length != 5 || !parts[0].Equals("argon2id", StringComparison.Ordinal))
+        if (!PhcFormatter.TryParse(phc, out PhcString? parsed))
             return false;
 
-        if (!parts[1].Equals("v=19", StringComparison.Ordinal))
+        PhcString record = parsed!;
+        if (!record.Identifier.Equals(_identifier, StringComparison.Ordinal) || record.Version != _version || record.Parameters.Count != 3 ||
+            record.Salt is null || record.Hash is null || !record.TryGetParameter("m", out string? memoryText) ||
+            !record.TryGetParameter("t", out string? timeText) || !record.TryGetParameter("p", out string? parallelismText))
             return false;
 
-        int memoryKiB = 0, time = 0, parallelism = 0;
-        string[] kvs = parts[2].Split(',', StringSplitOptions.RemoveEmptyEntries);
-
-        for (int i = 0; i < kvs.Length; i++)
-        {
-            string kv = kvs[i];
-            if (kv.StartsWith("m=", StringComparison.Ordinal) && !int.TryParse(kv.AsSpan(2), out memoryKiB))
-                return false;
-            if (kv.StartsWith("t=", StringComparison.Ordinal) && !int.TryParse(kv.AsSpan(2), out time))
-                return false;
-            if (kv.StartsWith("p=", StringComparison.Ordinal) && !int.TryParse(kv.AsSpan(2), out parallelism))
-                return false;
-        }
+        if (!int.TryParse(memoryText, NumberStyles.None, CultureInfo.InvariantCulture, out int memoryKiB) ||
+            !int.TryParse(timeText, NumberStyles.None, CultureInfo.InvariantCulture, out int time) ||
+            !int.TryParse(parallelismText, NumberStyles.None, CultureInfo.InvariantCulture, out int parallelism))
+            return false;
 
         if (memoryKiB <= 0 || time <= 0 || parallelism <= 0 || memoryKiB > _maxMemoryKiB || time > _maxTime || parallelism > _maxParallelism)
             return false;
 
-        if (parts[3].Length > 128 || parts[4].Length > 256)
+        if (record.Salt.Length > 128 || record.Hash.Length > 256)
             return false;
 
         byte[] salt, expected;
 
         try
         {
-            salt = Convert.FromBase64String(parts[3]);
-            expected = Convert.FromBase64String(parts[4]);
+            salt = Convert.FromBase64String(PadBase64(record.Salt));
+            expected = Convert.FromBase64String(PadBase64(record.Hash));
         }
         catch
         {
@@ -170,4 +166,6 @@ public static class Argon2HashingUtil
     private static bool ParametersAreSafe(int saltBytes, int hashBytes, int time, int memoryKiB, int parallelism) =>
         saltBytes is >= 8 and <= _maxSaltBytes && hashBytes is >= 16 and <= _maxHashBytes && time is >= 1 and <= _maxTime &&
         memoryKiB is >= 8 and <= _maxMemoryKiB && parallelism is >= 1 and <= _maxParallelism;
+
+    private static string PadBase64(string value) => value.PadRight(value.Length + (4 - value.Length % 4) % 4, '=');
 }
