@@ -13,7 +13,7 @@ public class Argon2HashingUtilTests : HostedUnitTest
     }
 
     [Test]
-    public async Task Hash_ShouldGenerateValidHash()
+    public async ValueTask Hash_ShouldGenerateValidHash()
     {
         // Arrange
         const string password = "SecurePassword123";
@@ -27,7 +27,7 @@ public class Argon2HashingUtilTests : HostedUnitTest
     }
 
     [Test]
-    public async Task Verify_ShouldReturnTrueForValidPassword()
+    public async ValueTask Verify_ShouldReturnTrueForValidPassword()
     {
         // Arrange
         const string password = "SecurePassword123";
@@ -41,7 +41,7 @@ public class Argon2HashingUtilTests : HostedUnitTest
     }
 
     [Test]
-    public async Task Verify_ShouldReturnFalseForInvalidPassword()
+    public async ValueTask Verify_ShouldReturnFalseForInvalidPassword()
     {
         // Arrange
         const string password = "SecurePassword123";
@@ -55,7 +55,7 @@ public class Argon2HashingUtilTests : HostedUnitTest
     }
 
     [Test]
-    public async Task Verify_ShouldReturnFalseForTamperedHash()
+    public async ValueTask Verify_ShouldReturnFalseForTamperedHash()
     {
         // Arrange
         var password = "SecurePassword123";
@@ -74,7 +74,7 @@ public class Argon2HashingUtilTests : HostedUnitTest
     }
 
     [Test]
-    public async Task Hash_ShouldThrowExceptionForNullPassword()
+    public async ValueTask Hash_ShouldThrowExceptionForNullPassword()
     {
         // Arrange
         string password = null;
@@ -87,7 +87,7 @@ public class Argon2HashingUtilTests : HostedUnitTest
     }
 
     [Test]
-    public async Task Verify_ShouldThrowExceptionForNullPassword()
+    public async ValueTask Verify_ShouldThrowExceptionForNullPassword()
     {
         // Arrange
         string hash = await Argon2HashingUtil.Hash("SecurePassword123");
@@ -100,7 +100,7 @@ public class Argon2HashingUtilTests : HostedUnitTest
     }
 
     [Test]
-    public async Task Verify_ShouldReturnFalseForShortValidBase64Hash()
+    public async ValueTask Verify_ShouldReturnFalseForShortValidBase64Hash()
     {
         // Arrange
         var password = "SecurePassword123";
@@ -114,7 +114,7 @@ public class Argon2HashingUtilTests : HostedUnitTest
     }
 
     [Test]
-    public async Task Verify_ShouldNotThrowForBase64()
+    public async ValueTask Verify_ShouldNotThrowForBase64()
     {
         // Arrange
         var password = "SecurePassword123";
@@ -128,7 +128,7 @@ public class Argon2HashingUtilTests : HostedUnitTest
     }
 
     [Test]
-    public async Task Verify_ShouldRejectMalformedWorkFactor()
+    public async ValueTask Verify_ShouldRejectMalformedWorkFactor()
     {
         const string phc = "$argon2id$v=19$m=not-a-number,t=3,p=2$c2FsdHNhbHRzYWx0c2FsdA==$aGFzaGhhc2hoYXNoaGFzaGhhc2g=";
 
@@ -138,7 +138,7 @@ public class Argon2HashingUtilTests : HostedUnitTest
     }
 
     [Test]
-    public async Task Verify_ShouldRejectExcessiveMemoryBeforeHashing()
+    public async ValueTask Verify_ShouldRejectExcessiveMemoryBeforeHashing()
     {
         const string phc = "$argon2id$v=19$m=2147483647,t=3,p=2$c2FsdHNhbHRzYWx0c2FsdA==$aGFzaGhhc2hoYXNoaGFzaGhhc2g=";
 
