@@ -2,6 +2,7 @@ using AwesomeAssertions;
 using Soenneker.Tests.HostedUnit;
 using System.Threading.Tasks;
 using System;
+using System.Threading;
 
 namespace Soenneker.Hashing.Argon2.Tests;
 
@@ -13,7 +14,7 @@ public class Argon2HashingUtilTests : HostedUnitTest
     }
 
     [Test]
-    public async ValueTask Hash_ShouldGenerateValidHash()
+    public async ValueTask Hash_ShouldGenerateValidHash(CancellationToken cancellationToken)
     {
         // Arrange
         const string password = "SecurePassword123";
@@ -27,7 +28,7 @@ public class Argon2HashingUtilTests : HostedUnitTest
     }
 
     [Test]
-    public async ValueTask Verify_ShouldReturnTrueForValidPassword()
+    public async ValueTask Verify_ShouldReturnTrueForValidPassword(CancellationToken cancellationToken)
     {
         // Arrange
         const string password = "SecurePassword123";
@@ -41,7 +42,7 @@ public class Argon2HashingUtilTests : HostedUnitTest
     }
 
     [Test]
-    public async ValueTask Verify_ShouldReturnFalseForInvalidPassword()
+    public async ValueTask Verify_ShouldReturnFalseForInvalidPassword(CancellationToken cancellationToken)
     {
         // Arrange
         const string password = "SecurePassword123";
@@ -55,7 +56,7 @@ public class Argon2HashingUtilTests : HostedUnitTest
     }
 
     [Test]
-    public async ValueTask Verify_ShouldReturnFalseForTamperedHash()
+    public async ValueTask Verify_ShouldReturnFalseForTamperedHash(CancellationToken cancellationToken)
     {
         // Arrange
         var password = "SecurePassword123";
@@ -74,7 +75,7 @@ public class Argon2HashingUtilTests : HostedUnitTest
     }
 
     [Test]
-    public async ValueTask Hash_ShouldThrowExceptionForNullPassword()
+    public async ValueTask Hash_ShouldThrowExceptionForNullPassword(CancellationToken cancellationToken)
     {
         // Arrange
         string password = null;
@@ -87,7 +88,7 @@ public class Argon2HashingUtilTests : HostedUnitTest
     }
 
     [Test]
-    public async ValueTask Verify_ShouldThrowExceptionForNullPassword()
+    public async ValueTask Verify_ShouldThrowExceptionForNullPassword(CancellationToken cancellationToken)
     {
         // Arrange
         string hash = await Argon2HashingUtil.Hash("SecurePassword123");
@@ -100,7 +101,7 @@ public class Argon2HashingUtilTests : HostedUnitTest
     }
 
     [Test]
-    public async ValueTask Verify_ShouldReturnFalseForShortValidBase64Hash()
+    public async ValueTask Verify_ShouldReturnFalseForShortValidBase64Hash(CancellationToken cancellationToken)
     {
         // Arrange
         var password = "SecurePassword123";
@@ -114,7 +115,7 @@ public class Argon2HashingUtilTests : HostedUnitTest
     }
 
     [Test]
-    public async ValueTask Verify_ShouldNotThrowForBase64()
+    public async ValueTask Verify_ShouldNotThrowForBase64(CancellationToken cancellationToken)
     {
         // Arrange
         var password = "SecurePassword123";
@@ -128,7 +129,7 @@ public class Argon2HashingUtilTests : HostedUnitTest
     }
 
     [Test]
-    public async ValueTask Verify_ShouldRejectMalformedWorkFactor()
+    public async ValueTask Verify_ShouldRejectMalformedWorkFactor(CancellationToken cancellationToken)
     {
         const string phc = "$argon2id$v=19$m=not-a-number,t=3,p=2$c2FsdHNhbHRzYWx0c2FsdA==$aGFzaGhhc2hoYXNoaGFzaGhhc2g=";
 
@@ -138,7 +139,7 @@ public class Argon2HashingUtilTests : HostedUnitTest
     }
 
     [Test]
-    public async ValueTask Verify_ShouldRejectExcessiveMemoryBeforeHashing()
+    public async ValueTask Verify_ShouldRejectExcessiveMemoryBeforeHashing(CancellationToken cancellationToken)
     {
         const string phc = "$argon2id$v=19$m=2147483647,t=3,p=2$c2FsdHNhbHRzYWx0c2FsdA==$aGFzaGhhc2hoYXNoaGFzaGhhc2g=";
 
