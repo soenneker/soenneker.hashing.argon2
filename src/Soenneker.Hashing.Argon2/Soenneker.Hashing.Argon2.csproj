@@ -49,6 +49,6 @@
         <PackageReference Include="Soenneker.Extensions.String" Version="4.0.781" />
         <PackageReference Include="Soenneker.Extensions.Task" Version="4.0.134" />
         <PackageReference Include="Soenneker.Hashing.Phc" Version="4.0.14" />
-        <PackageReference Include="Soenneker.Utils.Random.Security" Version="4.0.313" />
+        <PackageReference Include="Soenneker.Utils.Random.Security" Version="4.0.319" />
     </ItemGroup>
 </Project>
