@@ -46,9 +46,9 @@
 
     <ItemGroup>
         <PackageReference Include="Konscious.Security.Cryptography.Argon2" Version="1.3.1" />
-        <PackageReference Include="Soenneker.Extensions.String" Version="4.0.791" />
+        <PackageReference Include="Soenneker.Extensions.String" Version="4.0.794" />
         <PackageReference Include="Soenneker.Extensions.Task" Version="4.0.139" />
-        <PackageReference Include="Soenneker.Hashing.Phc" Version="4.0.22" />
+        <PackageReference Include="Soenneker.Hashing.Phc" Version="4.0.23" />
         <PackageReference Include="Soenneker.Utils.Random.Security" Version="4.0.320" />
     </ItemGroup>
 </Project>
