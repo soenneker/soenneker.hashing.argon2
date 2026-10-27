@@ -50,6 +50,6 @@
         <PackageReference Include="Soenneker.Extensions.String" Version="4.0.800" />
         <PackageReference Include="Soenneker.Extensions.Task" Version="11.0.141" />
         <PackageReference Include="Soenneker.Hashing.Phc" Version="11.0.27" />
-        <PackageReference Include="Soenneker.Utils.Random.Security" Version="11.0.322" />
+        <PackageReference Include="Soenneker.Utils.Random.Security" Version="11.0.323" />
     </ItemGroup>
 </Project>
